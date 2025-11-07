@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Login - EverNet</title>
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#001f3f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="EverNet Admin">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  
+  <!-- Fonts & Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    :root {
+      --navy: #001f3f;
+      --dark-navy: #00152c;
+      --gold: #d4af37;
+      --light-gold: #e6d4a8;
+      --white: #ffffff;
+      --light: #f8fafc;
+      --success: #28a745;
+      --danger: #dc3545;
+      --creator: #8B5CF6;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Poppins", sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--dark-navy) 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .login-container {
+      background: var(--white);
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .brand {
+      font-family: "Montserrat", sans-serif;
+      font-size: 2em;
+      font-weight: 900;
+      text-align: center;
+      margin-bottom: 30px;
+      background: linear-gradient(135deg, var(--navy) 0%, var(--creator) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--navy);
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 1em;
+      transition: all 0.3s ease;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--creator);
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.4s ease;
+      cursor: pointer;
+      font-size: 1em;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn.main {
+      background: linear-gradient(135deg, var(--navy) 0%, var(--dark-navy) 100%);
+      color: var(--white);
+      box-shadow: 0 8px 30px rgba(0, 31, 63, 0.2);
+    }
+
+    .btn.main:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(0, 31, 63, 0.3);
+    }
+
+    .notification {
+      padding: 15px;
+      border-radius: 10px;
+      color: white;
+      font-weight: 500;
+      margin-bottom: 20px;
+      text-align: center;
+      display: none;
+    }
+
+    .notification.error {
+      background: var(--danger);
+      display: block;
+    }
+
+    .notification.success {
+      background: var(--success);
+      display: block;
+    }
+
+    .admin-note {
+      text-align: center;
+      margin-top: 20px;
+      color: #64748b;
+      font-size: 0.9em;
+    }
+
+    /* Install Prompt */
+    .install-prompt {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--white);
+      padding: 15px 20px;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      display: none;
+      align-items: center;
+      gap: 15px;
+      z-index: 1000;
+      max-width: 90%;
+    }
+
+    .install-prompt button {
+      background: var(--creator);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .install-prompt button:hover {
+      background: #7c3aed;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="brand">EVERNET - ADMIN</div>
+    
+    <div id="notification" class="notification"></div>
+    
+    <div class="form-group">
+      <label class="form-label">Email Address</label>
+      <input type="email" class="form-input" id="email" placeholder="admin@evergreenempireltd.com">
+    </div>
+    
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input type="password" class="form-input" id="password" placeholder="Enter your password">
+    </div>
+    
+    <button class="btn main" onclick="login()">
+      <i class="fas fa-sign-in-alt"></i> Login to Admin Portal
+    </button>
+    
+    <div class="admin-note">
+      Restricted access - Admin privileges required
+    </div>
+  </div>
+
+  <!-- Install Prompt -->
+  <div id="installPrompt" class="install-prompt">
+    <span>Install EverNet Admin App?</span>
+    <button onclick="installApp()">Install</button>
+    <button onclick="dismissPrompt()" style="background: #64748b;">Later</button>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAuSEqhLenwrEz-qrIn1drjAugy1YSkDlI",
+      authDomain: "creators-portal-428c5.firebaseapp.com",
+      projectId: "creators-portal-428c5",
+      storageBucket: "creators-portal-428c5.firebasestorage.app",
+      messagingSenderId: "499280036303",
+      appId: "1:499280036303:web:b4d80d3b7fe1291381d2ba",
+      measurementId: "G-CYWGD80FS5"
+    };
+
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // PWA Installation
+    let deferredPrompt;
+    const installPrompt = document.getElementById('installPrompt');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      setTimeout(() => {
+        installPrompt.style.display = 'flex';
+      }, 3000);
+    });
+
+    function installApp() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === 'accepted') {
+            console.log('User accepted install');
+          }
+          deferredPrompt = null;
+          installPrompt.style.display = 'none';
+        });
+      }
+    }
+
+    function dismissPrompt() {
+      installPrompt.style.display = 'none';
+    }
+
+    // Service Worker Registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((registration) => {
+            console.log('SW registered: ', registration);
+          })
+          .catch((registrationError) => {
+            console.log('SW registration failed: ', registrationError);
+          });
+      });
+    }
+
+    function showNotification(message, type = 'error') {
+      const notification = document.getElementById('notification');
+      notification.textContent = message;
+      notification.className = `notification ${type}`;
+    }
+
+    async function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      if (!email || !password) {
+        showNotification('Please enter both email and password');
+        return;
+      }
+
+      try {
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+
+        // Check if user has admin role
+        const userDoc = await db.collection('users').doc(user.uid).get();
+        
+        if (userDoc.exists) {
+          const userData = userDoc.data();
+          if (userData.role === 'admin') {
+            showNotification('Login successful! Redirecting...', 'success');
+            setTimeout(() => {
+              window.location.href = 'admin-portal.html';
+            }, 1000);
+          } else {
+            showNotification('Access denied. Admin privileges required.');
+            await auth.signOut();
+          }
+        } else {
+          showNotification('User not found in system.');
+          await auth.signOut();
+        }
+
+      } catch (error) {
+        console.error('Login error:', error);
+        if (error.code === 'auth/wrong-password') {
+          showNotification('Invalid password');
+        } else if (error.code === 'auth/user-not-found') {
+          showNotification('User not found');
+        } else {
+          showNotification('Login failed: ' + error.message);
+        }
+      }
+    }
+
+    // Allow login on Enter key
+    document.addEventListener('keypress', function(event) {
+      if (event.key === 'Enter') {
+        login();
+      }
+    });
+  </script>
+</body>
+</html>
