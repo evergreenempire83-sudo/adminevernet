@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Referral Management - Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --border: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* Admin Header */
+        .admin-header {
+            background: var(--card);
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .admin-header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .admin-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .admin-user {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .admin-email {
+            font-size: 0.9rem;
+            color: #64748b;
+            background: #f1f5f9;
+            padding: 5px 10px;
+            border-radius: 20px;
+        }
+
+        /* Container */
+        .admin-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Stats */
+        .admin-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 30px 0;
+        }
+
+        .admin-stat {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .admin-stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .admin-stat-label {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        /* Search */
+        .admin-search {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            margin: 20px 0;
+        }
+
+        .admin-search-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        /* Table */
+        .admin-table {
+            background: var(--card);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            margin-top: 20px;
+            overflow: hidden;
+        }
+
+        .table-header {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            padding: 15px 20px;
+            background: #f8fafc;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .table-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border);
+            align-items: center;
+        }
+
+        .table-row:last-child {
+            border-bottom: none;
+        }
+
+        /* Buttons */
+        .admin-btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .admin-container {
+                padding: 15px;
+            }
+            
+            .admin-stats {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .table-header,
+            .table-row {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .admin-stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .admin-header-content {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+            
+            .table-header,
+            .table-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Loading & Empty */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <!-- Admin Header -->
+    <div class="admin-header">
+        <div class="admin-header-content">
+            <div class="admin-title">
+                <i class="fas fa-chart-network"></i>
+                <span>Referral Management</span>
+            </div>
+            <div class="admin-user">
+                <span class="admin-email" id="adminEmail">admin@evernet.com</span>
+                <button class="admin-btn btn-danger" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="admin-container">
+        <h1 style="margin-bottom: 10px;">Referral System</h1>
+        <p style="color: #64748b; margin-bottom: 20px;">Manage user referrals and earnings</p>
+
+        <!-- Stats -->
+        <div class="admin-stats">
+            <div class="admin-stat">
+                <div class="admin-stat-value" id="totalUsers">0</div>
+                <div class="admin-stat-label">Total Users</div>
+            </div>
+            <div class="admin-stat">
+                <div class="admin-stat-value" id="totalReferrals">0</div>
+                <div class="admin-stat-label">Total Referrals</div>
+            </div>
+            <div class="admin-stat">
+                <div class="admin-stat-value" id="totalEarnings">$0.00</div>
+                <div class="admin-stat-label">Total Earnings</div>
+            </div>
+            <div class="admin-stat">
+                <div class="admin-stat-value" id="pendingPayouts">$0.00</div>
+                <div class="admin-stat-label">Pending Payouts</div>
+            </div>
+        </div>
+
+        <!-- Search -->
+        <div class="admin-search">
+            <input type="text" 
+                   class="admin-search-input" 
+                   placeholder="Search users by email or referral code..."
+                   id="searchInput"
+                   onkeyup="searchUsers()">
+        </div>
+
+        <!-- Users Table -->
+        <div class="admin-table">
+            <div class="table-header">
+                <div>User</div>
+                <div>Referrals</div>
+                <div>Earned</div>
+                <div>Actions</div>
+            </div>
+            
+            <div id="usersTable">
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Loading users...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyAuSEqhLenwrEz-qrIn1drjAugy1YSkDlI",
+            authDomain: "creators-portal-428c5.firebaseapp.com",
+            projectId: "creators-portal-428c5",
+            storageBucket: "creators-portal-428c5.firebasestorage.app",
+            messagingSenderId: "499280036303",
+            appId: "1:499280036303:web:b4d80d3b7fe1291381d2ba"
+        };
+
+        // Initialize Firebase
+        let app, auth, db;
+        let allUsers = [];
+        
+        try {
+            app = firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.firestore();
+        } catch (error) {
+            app = firebase.app();
+            auth = firebase.auth();
+            db = firebase.firestore();
+        }
+
+        // Main function
+        async function init() {
+            // Check auth
+            auth.onAuthStateChanged(async (user) => {
+                if (user) {
+                    // Check if admin
+                    const userDoc = await db.collection('users').doc(user.uid).get();
+                    if (userDoc.exists && userDoc.data().role === 'admin') {
+                        document.getElementById('adminEmail').textContent = user.email;
+                        await loadAdminData();
+                    } else {
+                        alert('Admin access required');
+                        window.location.href = 'https://www.evernet.evergreenempireltd.com/';
+                    }
+                } else {
+                    window.location.href = 'https://www.evernet.evergreenempireltd.com/';
+                }
+            });
+        }
+
+        // Load admin data from your Firebase structure
+        async function loadAdminData() {
+            try {
+                console.log("Loading admin data...");
+                
+                // Load all users
+                const usersSnapshot = await db.collection('users').get();
+                allUsers = [];
+                
+                let totalUsers = 0;
+                let totalReferrals = 0;
+                let totalEarnings = 0;
+                let pendingPayouts = 0;
+                
+                // Get all creator videos to calculate earnings
+                const videosSnapshot = await db.collection('creatorVideos').get();
+                const userEarningsMap = {};
+                
+                // Calculate total earnings for each user from videos
+                videosSnapshot.forEach(doc => {
+                    const video = doc.data();
+                    const creatorId = video.creatorId;
+                    const earnings = video.creatorPayout || 0;
+                    
+                    if (!userEarningsMap[creatorId]) {
+                        userEarningsMap[creatorId] = 0;
+                    }
+                    userEarningsMap[creatorId] += earnings;
+                });
+                
+                console.log("Processing", usersSnapshot.size, "users...");
+                
+                // Process each user
+                for (const doc of usersSnapshot.docs) {
+                    const user = doc.data();
+                    const userId = doc.id;
+                    
+                    // Skip admin users
+                    if (user.role === 'admin') continue;
+                    
+                    totalUsers++;
+                    
+                    // Count user's referrals
+                    const referralsSnapshot = await db.collection('users')
+                        .where('referredBy', '==', userId)
+                        .get();
+                    
+                    const referralCount = referralsSnapshot.size;
+                    totalReferrals += referralCount;
+                    
+                    // Calculate referral earnings (3% of referred users' earnings)
+                    let userReferralEarnings = 0;
+                    let userPendingPayouts = 0;
+                    
+                    for (const refDoc of referralsSnapshot.docs) {
+                        const referredUser = refDoc.data();
+                        const referredUserId = refDoc.id;
+                        
+                        // Get referred user's total earnings from videos
+                        const userEarnings = userEarningsMap[referredUserId] || 0;
+                        const referralBonus = userEarnings * 0.03;
+                        
+                        userReferralEarnings += referralBonus;
+                        
+                        // Check if referral bonus has been paid
+                        const earningsPaid = referredUser.referralPaid || false;
+                        if (!earningsPaid) {
+                            userPendingPayouts += referralBonus;
+                        }
+                    }
+                    
+                    totalEarnings += userReferralEarnings;
+                    pendingPayouts += userPendingPayouts;
+                    
+                    // Add to allUsers array for display
+                    allUsers.push({
+                        id: userId,
+                        email: user.email || 'No email',
+                        referralCode: user.referralCode || `EVER${userId.substring(0, 6).toUpperCase()}`,
+                        referrals: referralCount,
+                        earned: userReferralEarnings,
+                        pending: userPendingPayouts,
+                        joinDate: user.createdAt?.toDate ? user.createdAt.toDate() : new Date(),
+                        status: user.status || 'active'
+                    });
+                }
+                
+                console.log("Data loaded:", totalUsers, "users,", totalReferrals, "referrals");
+                
+                // Update stats display
+                document.getElementById('totalUsers').textContent = totalUsers;
+                document.getElementById('totalReferrals').textContent = totalReferrals;
+                document.getElementById('totalEarnings').textContent = '$' + totalEarnings.toFixed(2);
+                document.getElementById('pendingPayouts').textContent = '$' + pendingPayouts.toFixed(2);
+                
+                // Display users table
+                renderUsersTable(allUsers);
+                
+            } catch (error) {
+                console.error("Error loading admin data:", error);
+                document.getElementById('usersTable').innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Error loading data: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Render users table
+        function renderUsersTable(users) {
+            const container = document.getElementById('usersTable');
+            
+            if (users.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-users"></i>
+                        <p>No users found</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            
+            users.forEach(user => {
+                html += `
+                    <div class="table-row">
+                        <div>
+                            <div style="font-weight: 500;">${user.email}</div>
+                            <div style="font-size: 0.8rem; color: #64748b;">
+                                Code: ${user.referralCode}
+                            </div>
+                        </div>
+                        <div>
+                            <span style="font-weight: 500;">${user.referrals}</span>
+                            <span style="font-size: 0.8rem; color: #64748b;">users</span>
+                        </div>
+                        <div>
+                            <div style="font-weight: 500; color: var(--success);">$${user.earned.toFixed(2)}</div>
+                            <div style="font-size: 0.8rem; color: #64748b;">
+                                Pending: $${user.pending.toFixed(2)}
+                            </div>
+                        </div>
+                        <div>
+                            <button class="admin-btn btn-primary" onclick="viewUserDetails('${user.id}')">
+                                View
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        // Search users
+        function searchUsers() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            
+            if (!searchTerm) {
+                renderUsersTable(allUsers);
+                return;
+            }
+            
+            const filteredUsers = allUsers.filter(user => 
+                user.email.toLowerCase().includes(searchTerm) ||
+                user.referralCode.toLowerCase().includes(searchTerm)
+            );
+            
+            renderUsersTable(filteredUsers);
+        }
+
+        // View user details
+        async function viewUserDetails(userId) {
+            try {
+                // Get user's referrals
+                const referralsSnapshot = await db.collection('users')
+                    .where('referredBy', '==', userId)
+                    .get();
+                
+                const user = allUsers.find(u => u.id === userId);
+                
+                // Get all creator videos to calculate earnings
+                const videosSnapshot = await db.collection('creatorVideos').get();
+                const userEarningsMap = {};
+                
+                videosSnapshot.forEach(doc => {
+                    const video = doc.data();
+                    const creatorId = video.creatorId;
+                    const earnings = video.creatorPayout || 0;
+                    
+                    if (!userEarningsMap[creatorId]) {
+                        userEarningsMap[creatorId] = 0;
+                    }
+                    userEarningsMap[creatorId] += earnings;
+                });
+                
+                let details = `User: ${user.email}\n`;
+                details += `Referral Code: ${user.referralCode}\n`;
+                details += `Total Referrals: ${user.referrals}\n`;
+                details += `Total Earned: $${user.earned.toFixed(2)}\n`;
+                details += `Pending Payout: $${user.pending.toFixed(2)}\n\n`;
+                details += `Referred Users:\n`;
+                
+                if (referralsSnapshot.empty) {
+                    details += "No referrals yet\n";
+                } else {
+                    referralsSnapshot.forEach(doc => {
+                        const referredUser = doc.data();
+                        const referredUserId = doc.id;
+                        const userEarnings = userEarningsMap[referredUserId] || 0;
+                        const referralBonus = userEarnings * 0.03;
+                        
+                        details += `• ${referredUser.email}: $${referralBonus.toFixed(2)} (3% of $${userEarnings.toFixed(2)})\n`;
+                    });
+                }
+                
+                alert(details);
+                
+            } catch (error) {
+                console.error("Error viewing user details:", error);
+                alert("Error loading user details");
+            }
+        }
+
+        // Logout function
+        function logout() {
+            auth.signOut()
+                .then(() => {
+                    window.location.href = 'https://www.evernet.evergreenempireltd.com/';
+                })
+                .catch(error => {
+                    console.error('Logout error:', error);
+                });
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
